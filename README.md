@@ -14,7 +14,7 @@ Deleted messages are actually moved to a specified Trash folder.
 
 Initially, the criterion is limited to:
 ```
-Specified Subject (no wildcards or regular expression) AND NOT Starred
+Specified Subject (no wildcards or regular expression) AND NOT \Flagged
 ```
 
 # ToDo
