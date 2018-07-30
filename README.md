@@ -12,9 +12,9 @@ The most recent message is kept, the older messages are deleted.
 
 Deleted messages are actually moved to a specified Trash folder.
 
-Initially, the only criterion that can be specified is:
+Initially, the criterion is limited to:
 ```
-Specified Subject (no wildcards or regular expression) AND Not Starred
+Specified Subject (no wildcards or regular expression) AND NOT Starred
 ```
 
 # ToDo
