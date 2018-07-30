@@ -13,9 +13,9 @@ The most recent message is kept, the older messages are deleted.
 Deleted messages are actually moved to a specified Trash folder.
 
 Initially, the only criterion that can be specified is:
-{{{
+```
 Specified Subject (no wildcards or regular expression) AND Not Starred
-}}}
+```
 
 # ToDo
 
