@@ -1,0 +1,16 @@
+do "$ENV{HOME}/.tidy-inbox-imaprc.imap-settings";
+
+config_action_defaults (
+    trash => 'Tidied',
+    dryrun => 0,
+    keep => 2,
+    );
+
+config_action_dedup (search => 'SUBJECT "Cron <root@nas> echo hello" BODY "hello" NOT FLAGGED NOT DELETED',
+		     comment => 'Dedup NAS hello');
+#config_action_list (search => 'SUBJECT "Cron <root@nas> echo hello" NOT DELETED');
+#config_action_expunge (dryrun => 1);
+
+#print Dumper \@config_actions;
+
+1;

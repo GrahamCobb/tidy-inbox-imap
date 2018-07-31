@@ -6,58 +6,97 @@ use Email::Simple;
 use DateTime::Format::Mail;
 use Data::Dumper;
 
-sub delete_message($$);
+# Global variables
+our %config_imap = (); # IMAP settings
+our %config_action_defaults = (); # Defaults for subsequent actions
+our @config_actions = (); # Array of all actions
+our $force_dryrun = 0; # Global dry run override
 
-# Configuration
-our ($imap_server, $imap_username, $imap_password);
-our $imap_inbox = 'INBOX';
-our $trash_folder = 'Tidied';
-our $search = 'SUBJECT "Cron <root@nas> echo hello" BODY "hello" NOT FLAGGED NOT DELETED';
-# Read in config files: system first, then user.
-for my $file ("/share/tidy-inbox-imap/defaults.rc",
-           "$ENV{HOME}/.tidy-inbox-imaprc",
-	   "./.tidy-inbox-imaprc",
-    )
-{
-    unless (my $return = do $file) {
-	warn "couldn't parse $file: $@" if $@;
-	#warn "couldn't do $file: $!"    unless defined $return;
-	#warn "couldn't run $file"       unless $return;
+# Utility routines
+
+sub do_search($$$) {
+    my ($imap, $search, $sort) = @_;
+    my @ids = $imap->search($search, $sort);
+    die "Search failed: ".$imap->errstr."\n" if $imap->waserr || $imap->errstr;
+    return @ids
+}
+
+sub delete_message($$$) {
+    my ($imap, $msgnum, $trash) = @_;
+    $imap->copy( $msgnum, $trash )
+	or ( ($imap->errstr =~ /\[TRYCREATE\]/i) and $imap->create_mailbox($trash) and $imap->copy( $msgnum, $trash ) )
+	or die "Copy failed: ".$imap->errstr."\n";
+    $imap->delete( $msgnum ) or die "Delete failed: ".$imap->errstr."\n";
+}
+
+# Actions
+
+sub action_dedup($$) {
+    my ($imap, $action) = (@_);
+
+    if ($action->{comment}) { print $action->{comment}."\n"; }
+    
+    # Select INBOX
+    unless (my $msgs = $imap->select($action->{inbox})) {
+	die "Folder $action->{inbox} not found: ".$imap->errstr."\n" unless defined $msgs;
+	warn "Folder $action->{inbox} is empty.\n";
+	return;
     }
+
+    # Do the search, sorted by date
+    my @ids = do_search($imap, $action->{search}, $action->{order});
+
+    # If nothing found just exit
+    unless (@ids) {
+	warn "Nothing found in search.\n";
+	return;
+    }
+
+    if ($action->{filter}) {
+	@ids = $action->{filter}($imap, @ids);
+	# If nothing found just exit
+	return unless (@ids);
+    }
+
+    #print @ids." messages found\n";
+    #print "Available server flags: " . join(", ", $imap->flags) . "\n";
+
+    # Forget about latest message and delete the rest
+    if ($action->{keep} && $action->{keep} > 0) {
+	for ( my $i = $action->{keep} ; $i ; $i-- ) {
+	    my $latest = pop @ids;
+	    last unless $latest;
+	    print "Ignoring message $latest\n";
+	}
+    }
+    if ($action->{keep} && $action->{keep} < 0) {
+	for ( my $i = - $action->{keep} ; $i ; $i-- ) {
+	    my $latest = shift @ids;
+	    last unless $latest;
+	    print "Ignoring message $latest\n";
+	}
+    }
+
+    # Any to delete?
+    if (@ids) {
+	for my $midx ( @ids ) {
+	    if ($force_dryrun || $action->{dryrun}) {print "DRY RUN: ";}
+	    print "Deleting $midx\n";
+	    delete_message $imap, $midx, $action->{trash} unless $force_dryrun || $action->{dryrun};
+	}
+    }
+    
 }
- 
-# RFC2822 date parser
-my $date_parser = DateTime::Format::Mail->new( loose => 1 );
 
-# Create the object
-my $imap = Net::IMAP::Simple->new($imap_server) ||
-   die "Unable to connect to IMAP: ".$Net::IMAP::Simple::errstr."\n";
- 
-# Log on
-if(!$imap->login($imap_username,$imap_password)){
-    die "Login failed: $imap->errstr\n";
-}
+# Filters
 
-# Select INBOX
-unless (my $msgs = $imap->select($imap_inbox)) {
-    die "Folder $imap_inbox not found: ".$imap->errstr."\n" unless defined $msgs;
-    warn "Folder $imap_inbox is empty. Exiting.\n";
-    exit;
-}
+# Sample filter, although sorting by date is built-in to the search and is the default
+sub filter_sort_by_date($@) {
+    my ($imap, @ids) = (@_);
+    
+    # RFC2822 date parser
+    my $date_parser = DateTime::Format::Mail->new( loose => 1 );
 
-# Do the search, sorted by date
-my @ids = $imap->search($search, 'DATE');
-unless (@ids) {
-    die $imap->errstr if $imap->waserr;
-    # If nothing found just exit silently
-    warn "Nothing found in search.\n";
-    exit;
-}
-
-#print "$#ids messages found\n";
-#print "Available server flags: " . join(", ", $imap->flags) . "\n";
-
-if (0) { # Rely on IMAP SEARCH to do the sort
     # Messages and dates
     my %message_date;
 
@@ -73,26 +112,107 @@ if (0) { # Rely on IMAP SEARCH to do the sort
     }
 
     # Sort by date
-    @ids = sort { $message_date{$a} <=> $message_date{$b} } @ids;
+    return sort { $message_date{$a} <=> $message_date{$b} } @ids;
 }
 
-# Forget about latest message and delete the rest
-my $latest = pop @ids;
-print "Ignoring most recent message $latest\n";
+# Configuration
 
-# Any to delete?
-if (@ids) {
-    # Make sure the trash folder exists but ignore any error
-    $imap->create_mailbox($trash_folder);
-    for my $midx ( @ids ) {
-	delete_message $midx, $trash_folder;
+# Set IMAP settings
+sub config_imap (@) {
+    # Merge specified values into %config_imap
+    %config_imap = (%config_imap , @_);
+}
+
+# Set action defaults
+sub config_action_defaults (@) {
+    # Merge specified values into %config_action_defaults
+    %config_action_defaults = (%config_action_defaults , @_);
+}
+
+sub add_config_action ($) {
+    # Add a config action hash reference to the list of actions to perform
+    push @config_actions, @_;
+}
+# Add dedup action
+sub config_action_dedup (@) {
+    my $action = {
+	keep => 1, # Can be overriden by defaults
+	order => 'DATE', # Can be overriden by defaults
+	%config_action_defaults,
+	action => \&action_dedup,
+	@_,
+    };
+    die "Dedup action requires search to be specified" unless $action->{search};
+    add_config_action $action;
+}
+# Add delete action
+sub config_action_delete (@) {
+    my $action = {
+	%config_action_defaults,
+	keep => 0, # Overrides defaults
+	action => \&action_delete,
+	@_,
+    };
+    die "Delete action requires search to be specified" unless $action->{search};
+    warn "Delete actions with keep should be written as dedup actions" if $action->{keep};
+    add_config_action $action;
+}
+# Add expunge action
+sub config_action_expunge (@) {
+     my $action = {
+	%config_action_defaults,
+	action => \&action_expunge,
+	@_,
+    };
+    die "Expunge action requires folder to be specified" unless $action->{folder};
+    add_config_action $action;
+}
+# Add list action
+sub config_action_list (@) {
+    my $action = {
+	%config_action_defaults,
+	action => \&action_list,
+	@_,
+    };
+    die "Delete action requires search to be specified" unless $action->{search};
+    add_config_action $action;
+}
+
+# Builtin defaults
+config_action_defaults (
+    folder => 'INBOX',
+    trash => 'Trash',
+    order => 'DATE',
+    # dryrun => 0,
+    # keep => 0,
+    # search => '',
+    # comment => '',
+    # filter -> undef,
+    );
+
+# Read in config files: system first, then user.
+for my $file ("/share/tidy-inbox-imap/defaults.rc",
+           "$ENV{HOME}/.tidy-inbox-imaprc",
+	   "./.tidy-inbox-imaprc",
+    )
+{
+    unless (my $return = do $file) {
+	warn "couldn't parse $file: $@" if $@;
+	#warn "couldn't do $file: $!"    unless defined $return;
+	#warn "couldn't run $file"       unless $return;
     }
 }
+ 
+# IMAP connect
+my $imap = Net::IMAP::Simple->new($config_imap{server}) ||
+   die "Unable to connect to IMAP: ".$Net::IMAP::Simple::errstr."\n";
+ 
+# Log on
+if ($config_imap{username}) {
+    $imap->login($config_imap{username},$config_imap{password}) or die "Login failed: $imap->errstr\n";
+}
 
-sub delete_message($$) {
-    my ($msgnum, $trash) = @_;
-    print "Deleting $msgnum\n";
-    $imap->copy( $msgnum, $trash ) or die "Copy failed: ".$imap->errstr."\n";
-#    $imap->sub_flags( $msgnum, '$label3' ) or die "Setting flag: ".$imap->errstr."\n";
-    $imap->delete( $msgnum ) or die "Deleting: ".$imap->errstr."\n";
+# Do the actions
+for my $action (@config_actions) {
+    $action->{action}($imap, $action);
 }
