@@ -10,7 +10,7 @@ use Data::Dumper;
 our %config_imap = (); # IMAP settings
 our %config_action_defaults = (); # Defaults for subsequent actions
 our @config_actions = (); # Array of all actions
-our $force_dryrun = 0; # Global dry run override
+our $force_dryrun = 1; # Global dry run override
 
 # Utility routines
 
@@ -31,7 +31,8 @@ sub delete_message($$$) {
 
 # Actions
 
-sub action_dedup($$) {
+# action_delete handles both dedup and delete
+sub action_delete($$) {
     my ($imap, $action) = (@_);
 
     if ($action->{comment}) { print $action->{comment}."\n"; }
@@ -139,10 +140,11 @@ sub config_action_dedup (@) {
 	keep => 1, # Can be overriden by defaults
 	order => 'DATE', # Can be overriden by defaults
 	%config_action_defaults,
-	action => \&action_dedup,
+	action => \&action_delete,
 	@_,
     };
     die "Dedup action requires search to be specified" unless $action->{search};
+    warn "Dedup actions with keep=>0 should be written as delete actions" if $action->{keep} == 0;
     add_config_action $action;
 }
 # Add delete action
@@ -174,7 +176,7 @@ sub config_action_list (@) {
 	action => \&action_list,
 	@_,
     };
-    die "Delete action requires search to be specified" unless $action->{search};
+    die "List action requires search to be specified" unless $action->{search};
     add_config_action $action;
 }
 

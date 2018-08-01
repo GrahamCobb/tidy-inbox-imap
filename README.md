@@ -53,7 +53,7 @@ config procedures:
 * config_imap
 * config_action_defaults
 * config_action_dedup
-* *config_action_delete*
+* config_action_delete
 * *config_action_expunge*
 * *config_action_list*
 
@@ -101,5 +101,7 @@ An example filter procedure is `filter_sort_by_date` in the main script source.
 
  * Expunge
  * Command line configuration
- * Add additional tidying options: not just removing duplicates
+ * List action
+ * Logging
+ * Other actions
  
