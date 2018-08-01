@@ -18,21 +18,25 @@ without powerful scripting and are also often triggered only by arrival of new m
 This tool is less efficient as it ends up manipulating messages over IMAP, and it only has access to the
 IMAP server folders, but it can run at any time and includes powerful scripting.
 
-## Dedup
+## Actions
 
-The mailbox is searched for all messages matching certain critieria.
-The most recent message(s) are kept, the older messages are deleted.
-Deleted messages are actually moved to a specified Trash folder and then marked deleted.
+All (unless specified) actions support the following parameters:
 
 Parameters:
  * `search` - IMAP search to use for messages - **no default**
  * `folder` - folder to search - **default:** *INBOX*
  * `trash` - folder to move deleted messages to - **default:** *Trash*
  * `dryrun` - do not actually perform delete action - **default:** *0*
- * `keep` - number of messages to keep; +N means keep most recent N, -N means keep oldest N - **default** *+1*
+ * `keep` - (Dedup only) number of messages to keep; +N means keep most recent N, -N means keep oldest N - **default:** *+1*
  * `order` - ordering for search results - **default:** *DATE*
- * `comment` - text to print when starting this action - **default:** *empty*
+ * `comment` - text to print when starting this action - **default:** *none*
  * `filter` - perl subroutine reference to filter selected messages - **default:** *none*
+
+### Dedup
+
+The mailbox is searched for all messages matching certain critieria (search and filter).
+The most recent message(s) are kept, the older messages are deleted.
+Deleted messages are actually moved to a specified Trash folder and then marked deleted.
 
 ## Configuration
 
@@ -41,10 +45,10 @@ Perl files for configuration are searched for and all loaded, in order, from:
 ```
 /share/tidy-inbox-imap/defaults.rc
 $ENV{HOME}/.tidy-inbox-imaprc
-./.tidy-inbox-imaprc
+./.tidy-inbox-imap
 ```
 
-The configuration files are perl scripts can should call the
+The configuration files are perl scripts and should call the
 config procedures:
 * config_imap
 * config_action_defaults
@@ -71,11 +75,10 @@ Each call to this procedure merges the specified values into the defaults (repla
 default value for the same parameter).
 These defaults will be applied to any later call to the action configurations.
 
-### config_action_dedup
-Add a "dedup" action.
-See description of the action and its parameters above.
+### Example
+An example config file can be found as `tidy-inbox-imaprc.example` in the git repository.
 
-### Searches
+## Searches
 Most actions require an IMAP RFC 3501 search string to specify the messages to be acted upon.
 An example is `SUBJECT "Cron <root@nas> echo hello" BODY "hello" NOT FLAGGED NOT DELETED`.
 
@@ -84,9 +87,6 @@ script runs.
 
 I also normally include `NOT FLAGGED` so that I can manually exclude messages from
 script processing by marking them with a flag in my mail client (a star in thunderbird).
-
-### Example
-An example config file can be found as `tidy-inbox-imaprc.example` in the git repository.
 
 ## Filter
 
@@ -97,7 +97,7 @@ It must return the list of message ids to be processed, even if it is unchanged.
 
 An example filter procedure is `filter_sort_by_date` in the main script source.
 
-# ToDo
+## ToDo
 
  * Expunge
  * Command line configuration

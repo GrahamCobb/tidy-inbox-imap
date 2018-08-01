@@ -1,4 +1,8 @@
-do "$ENV{HOME}/.tidy-inbox-imaprc.imap-settings";
+config_imap (
+    server => "imap.example.com",
+    username => "me-me-me",
+    password => "Pa55WoRd",
+    );
 
 config_action_defaults (
     trash => 'Tidied',
