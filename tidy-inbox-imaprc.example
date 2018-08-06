@@ -6,14 +6,17 @@ config_imap (
 
 config_action_defaults (
     trash => 'Tidied',
-    dryrun => 0,
-    keep => 2,
+    dryrun => 0, # Change to 1 to disable all actions
+    keep => 2, # Change default for dedup
     );
 
 config_action_dedup (search => 'SUBJECT "Cron <root@nas> echo hello" BODY "hello" NOT FLAGGED NOT DELETED',
 		     comment => 'Dedup NAS hello');
+config_action_delete (search => 'FROM "MAILER-DAEMON@example.com" SUBJECT "Postfix SMTP server: errors from" BODY "Relay access denied" NOT FLAGGED NOT DELETED',
+		      before => '2 days ago',
+		      comment => 'SMTP relay denied');
 #config_action_list (search => 'SUBJECT "Cron <root@nas> echo hello" NOT DELETED');
-#config_action_expunge (dryrun => 1);
+#config_action_expunge (dryrun => 1); # Disabled
 
 #print Dumper \@config_actions;
 

@@ -3,6 +3,7 @@ use strict;
 use warnings;
 use Net::IMAP::Simple;
 use Email::Simple;
+use Time::ParseDate;
 use DateTime::Format::Mail;
 use Data::Dumper;
 
@@ -10,12 +11,35 @@ use Data::Dumper;
 our %config_imap = (); # IMAP settings
 our %config_action_defaults = (); # Defaults for subsequent actions
 our @config_actions = (); # Array of all actions
-our $force_dryrun = 1; # Global dry run override
+our $force_dryrun = 0; # Global dry run override
 
 # Utility routines
 
+# Convert a date specification to an RFC3501 "date-text"
+sub date_to_RFC3501($) {
+    my ($string) = @_;
+    die "date string not specified" unless $string;
+
+    return POSIX::strftime( "%d-%b-%Y",
+			    localtime(parsedate($string, {WHOLE => 1, PREFER_PAST => 1}))
+	);
+}
+
+# Create full search string from parameters
+sub build_search($) {
+    # The primary purpose of this is to allow us to specify dates in any form acceptable to Time::ParseDate
+    my ($action) = @_;
+    my $before='';
+    my $since='';
+
+    $before = 'BEFORE '.date_to_RFC3501($action->{before}).' ' if $action->{before};
+    $since = 'SINCE '.date_to_RFC3501($action->{since}).' ' if $action->{since};
+    return $before.$since.$action->{search};
+}
+
 sub do_search($$$) {
     my ($imap, $search, $sort) = @_;
+    print $search."\n";
     my @ids = $imap->search($search, $sort);
     die "Search failed: ".$imap->errstr."\n" if $imap->waserr || $imap->errstr;
     return @ids
@@ -45,11 +69,12 @@ sub action_delete($$) {
     }
 
     # Do the search, sorted by date
-    my @ids = do_search($imap, $action->{search}, $action->{order});
+    my $search = build_search($action);
+    my @ids = do_search($imap, $search, $action->{order});
 
     # If nothing found just exit
     unless (@ids) {
-	warn "Nothing found in search.\n";
+	print "Nothing found in search.\n";
 	return;
     }
 

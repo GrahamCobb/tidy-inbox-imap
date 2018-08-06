@@ -23,7 +23,9 @@ IMAP server folders, but it can run at any time and includes powerful scripting.
 All (unless specified) actions support the following parameters:
 
 Parameters:
- * `search` - IMAP search to use for messages - **no default**
+ * `search` - IMAP search to use for messages (see Search below) - **no default**
+ * `before` - Date for IMAP BEFORE search (see Search below) - **no default**
+ * `since` - Date for IMAP SINCE search (see Search below) - **no default**
  * `folder` - folder to search - **default:** *INBOX*
  * `trash` - folder to move deleted messages to - **default:** *Trash*
  * `dryrun` - do not actually perform delete action - **default:** *0*
@@ -88,14 +90,43 @@ script runs.
 I also normally include `NOT FLAGGED` so that I can manually exclude messages from
 script processing by marking them with a flag in my mail client (a star in thunderbird).
 
+## Search
+
+Search strings should be specified in the syntax defined in the IMAP RFC 3501
+(or any restricted or extended syntax supoported by your server).
+
+### Dates
+RFC 3501 allows dates to be specified in BEFORE, ON, SINCE, SENTBEFORE, SENTON and SENTSINCE clauses.
+
+The RFC 3501 format for dates is quite restrictive: just DD-MMM-YYYY.
+However, of course, the full power of perl is available for formatting dates.
+For example, the following would be a valid `search =>` specification:
+```
+search => 'ON ' . POSIX::strftime( "%d-%b-%Y", localtime( ( time() - ( 24 * 60 * 60 ) ) ) ) . ' SUBJECT "test"'
+```
+Unfortunately, that calculation for yesterday does not correctly handle daylight saving time!
+For convenience, a utility function `date_to_RFC3501` is provided which converts any date string
+acceptable to Time::ParseDate into the RFC 3501 format. This includes strings such as "today", "2 days ago",
+"last monday". So, a more correct search specification would be:
+```
+search => 'ON ' . date_to_RFC3501('yesterday') . ' SUBJECT "test"'
+```
+
+As BEFORE and SINCE are so common, they can be specified directly as action parameters (for example `since => 'yesterday'`).
+The value for the parameter is passed to date_to_RFC3501 and the result is combined with either `BEFORE` or `SINCE`
+and added to **the front of the search string**. If the value needs to be inserted into the string somewhere else
+(for example in a `NOT` or `OR` clause or in parentheses) then the string must be constructed in perl as in the example above.
+
 ## Filter
 
-A filter procedure can be used to remove message ids from processing in the action.
+A filter procedure can be specified to remove message ids from processing during the action.
 It has to be a perl subroutine which accepts a (scalar) reference to the Net::IMAP::Simple
 object for the connection followed by the list of message ids.
 It must return the list of message ids to be processed, even if it is unchanged.
 
 An example filter procedure is `filter_sort_by_date` in the main script source.
+Note: this specific filter is not normally needed as the default search order is by date
+but the code may be a useful example.
 
 ## ToDo
 
