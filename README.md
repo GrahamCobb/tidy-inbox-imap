@@ -24,8 +24,8 @@ All (unless specified) actions support the following parameters:
 
 Parameters:
  * `search` - IMAP search to use for messages (see Search below) - **no default**
- * `before` - Date for IMAP BEFORE search (see Search below) - **no default**
- * `since` - Date for IMAP SINCE search (see Search below) - **no default**
+ * `before` - Date for IMAP BEFORE search (see Search below) - **default:** *none*
+ * `since` - Date for IMAP SINCE search (see Search below) - **default:** *none*
  * `folder` - folder to search - **default:** *INBOX*
  * `trash` - folder to move deleted messages to - **default:** *Trash*
  * `dryrun` - do not actually perform delete action - **default:** *0*
@@ -33,6 +33,10 @@ Parameters:
  * `order` - ordering for search results - **default:** *DATE*
  * `comment` - text to print when starting this action - **default:** *none*
  * `filter` - perl subroutine reference to filter selected messages - **default:** *none*
+ * `min` - (Check only) minimum number of messages expected in check - **default:** *none*
+ * `max` - (Check only) maximum number of messages expected in check - **default:** *none*
+ * `warn` - (Check only) message to display if check fails - **default:** *Check failed: %d messages match search*
+ * `check` - (Check only) perl subroutine reference to determine if messages pass check - **default:** *none*
 
 ### Dedup
 
@@ -49,6 +53,26 @@ Deleted messages are actually moved to a specified Trash folder and then marked 
 
 Does nothing (except printing the comment).
 
+### Check
+
+The mailbox is searched for all messages matching certain critieria (search and filter).
+
+A check procedure can be specified to allow perl code to determine if the check passes.
+This has to be a perl subroutine which accepts a (scalar) reference to the Net::IMAP::Simple
+object for the connection followed by the list of message ids (this is the same arguments as a filter procedure).
+It must return a true/false value to indicate whether the test passes.
+This can be a scalar or the first element of a list.
+If a list, the second element must be the desired warning message (this will replace the message specified
+in the configuration).
+
+All the specified checks are applied:
+ * `check` - the specified subroutine determines if the messages pass the checks
+ * 'min' - fails if the number of messages is below the specified value
+ * 'max' - fails if the number of messages is above the specified value
+
+If the check passes nothing happens.
+If it fails, the warning message is printed (using it as a printf format, with the number of messages as the value).
+
 ## Configuration
 
 Perl files for configuration are searched for and all loaded, in order, from:
@@ -59,13 +83,14 @@ $ENV{HOME}/.tidy-inbox-imaprc
 ./.tidy-inbox-imap
 ```
 
-The configuration files are perl scripts and should call the
+The configuration files are perl scripts and can call the
 config procedures:
 * config_imap
 * config_action_defaults
 * config_action_dedup
 * config_action_delete
 * config_action_null
+* config_action_check
 * *config_action_expunge*
 * *config_action_list*
 
@@ -73,14 +98,14 @@ Note: the script will execute the actions in the order they are defined in the c
 
 ### config_imap
 This is used to specify the connection to the IMAP server.
-It must be called somewhere in one of the configuration files and must at least specify the server name.
+It **must** be called somewhere in one of the configuration files and must at least specify the server name.
 
 * `server` - host name of IMAP server - **no default**
 * `username` - username for IMAP login - **no default** - if not specified, no login is attempted (this is unlikely to work)
 * `password` - password for IMAP login - **no default** - must be specified if username is specified
 
 ### config_action_defaults
-This is used to set default parameters for all the actions.
+This is used to set default parameters for subsequent actions.
 An example is to set the trash folder to something other than the built-in default (Trash).
 
 Each call to this procedure merges the specified values into the defaults (replacing any existing

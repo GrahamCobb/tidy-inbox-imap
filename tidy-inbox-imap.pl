@@ -104,12 +104,50 @@ sub action_delete($$) {
     # Any to delete?
     if (@ids) {
 	for my $midx ( @ids ) {
-	    if ($force_dryrun || $action->{dryrun}) {print "DRY RUN: ";}
-	    print "Deleting $midx\n";
+	    print "DRY RUN: " if $force_dryrun || $action->{dryrun};
+	    print "Deleting $midx";
+	    #logging...
+	    print "\n";
 	    delete_message $imap, $midx, $action->{trash} unless $force_dryrun || $action->{dryrun};
 	}
     }
     
+}
+
+sub action_check($$) {
+    my ($imap, $action) = (@_);
+
+    # Select INBOX
+    unless (my $msgs = $imap->select($action->{inbox})) {
+	die "Folder $action->{inbox} not found: ".$imap->errstr."\n" unless defined $msgs;
+	warn "Folder $action->{inbox} is empty.\n";
+	return;
+    }
+
+    # Do the search, sorted by date
+    my $search = build_search($action);
+    my @ids = do_search($imap, $search, $action->{order});
+
+    if ($action->{filter} && @ids) {
+	@ids = $action->{filter}($imap, @ids);
+    }
+
+    #print @ids." messages found\n";
+
+    # Do checks
+    my $check_ok = 1;
+    my $warn;
+
+    ($check_ok, $warn) = $action->{check}($imap, @ids) if $action->{check};
+    $check_ok = 0 if $action->{min} && @ids < $action->{min};
+    $check_ok = 0 if $action->{max} && @ids > $action->{max};
+
+    unless ($check_ok) {
+	$warn = $warn || $action->{warn};
+	printf $warn, scalar @ids;
+	print "\n";
+    }
+
 }
 
 # Filters
@@ -211,6 +249,17 @@ sub config_action_null (@) {
     };
     add_config_action $action;
 }
+# Add check action
+sub config_action_check (@) {
+    my $action = {
+	%config_action_defaults,
+	action => \&action_check,
+	@_,
+    };
+    die "Check action requires min or max to be specified" unless $action->{min} || $action->{max};
+    die "Check action requires search to be specified" unless $action->{search};
+    add_config_action $action;
+}
 
 
 # Builtin defaults
@@ -218,11 +267,16 @@ config_action_defaults (
     folder => 'INBOX',
     trash => 'Trash',
     order => 'DATE',
+    warn => 'Check failed: %d messages match search',
     # dryrun => 0,
     # keep => 0,
     # search => '',
     # comment => '',
-    # filter -> undef,
+    # filter => undef,
+    # since => undef,
+    # before => undef,
+    # min => undef,
+    # max => undef,
     );
 
 # Read in config files: system first, then user.
