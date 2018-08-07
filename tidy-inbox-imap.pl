@@ -39,7 +39,7 @@ sub build_search($) {
 
 sub do_search($$$) {
     my ($imap, $search, $sort) = @_;
-    print $search."\n";
+    #print $search."\n";
     my @ids = $imap->search($search, $sort);
     die "Search failed: ".$imap->errstr."\n" if $imap->waserr || $imap->errstr;
     return @ids
@@ -58,8 +58,6 @@ sub delete_message($$$) {
 # action_delete handles both dedup and delete
 sub action_delete($$) {
     my ($imap, $action) = (@_);
-
-    if ($action->{comment}) { print $action->{comment}."\n"; }
     
     # Select INBOX
     unless (my $msgs = $imap->select($action->{inbox})) {
@@ -80,7 +78,7 @@ sub action_delete($$) {
 
     if ($action->{filter}) {
 	@ids = $action->{filter}($imap, @ids);
-	# If nothing found just exit
+	# If nothing remaining just exit
 	return unless (@ids);
     }
 
@@ -204,6 +202,16 @@ sub config_action_list (@) {
     die "List action requires search to be specified" unless $action->{search};
     add_config_action $action;
 }
+# Add null action
+sub config_action_null (@) {
+    my $action = {
+	%config_action_defaults,
+	action => undef,
+	@_,
+    };
+    add_config_action $action;
+}
+
 
 # Builtin defaults
 config_action_defaults (
@@ -241,5 +249,7 @@ if ($config_imap{username}) {
 
 # Do the actions
 for my $action (@config_actions) {
-    $action->{action}($imap, $action);
+    print $action->{comment}."\n" if $action->{comment};
+
+    $action->{action}($imap, $action) if $action->{action};
 }

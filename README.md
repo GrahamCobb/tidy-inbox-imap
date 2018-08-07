@@ -40,6 +40,15 @@ The mailbox is searched for all messages matching certain critieria (search and 
 The most recent message(s) are kept, the older messages are deleted.
 Deleted messages are actually moved to a specified Trash folder and then marked deleted.
 
+### Delete
+
+The mailbox is searched for all messages matching certain critieria (search and filter), which are then deleted.
+Deleted messages are actually moved to a specified Trash folder and then marked deleted.
+
+### Null
+
+Does nothing (except printing the comment).
+
 ## Configuration
 
 Perl files for configuration are searched for and all loaded, in order, from:
@@ -56,6 +65,7 @@ config procedures:
 * config_action_defaults
 * config_action_dedup
 * config_action_delete
+* config_action_null
 * *config_action_expunge*
 * *config_action_list*
 
