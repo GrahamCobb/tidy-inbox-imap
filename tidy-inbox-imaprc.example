@@ -17,7 +17,7 @@ config_action_defaults (
 config_action_check (search => 'SUBJECT "Cron <root@nas>" SUBJECT "echo hello" BODY "hello"',
 		     since => '2 days ago',
 		     min => 1,
-		     warn => 'WARNING: No (%d) NAS hellos seen in last 2 days',
+		     warning => 'WARNING: No (%d) NAS hellos seen in last 2 days',
 		     comment => 'Check NAS still alive');
 # Tidy recurring mails
 config_action_dedup (search => 'SUBJECT "Cron <root@nas>" SUBJECT "echo hello" BODY "hello" NOT FLAGGED NOT DELETED',
