@@ -1,3 +1,6 @@
+# Configuration of IMAP server settings is mandatory.
+# If you prefer to keep your IMAP settings separate from this file you can use .tidy-inbox-imaprc.imap-settings
+# Or, of course, include perl code to handle some sort of encrypted storage
 config_imap (
     server => "imap.example.com",
     username => "me-me-me",

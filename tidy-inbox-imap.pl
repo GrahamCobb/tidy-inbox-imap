@@ -280,9 +280,10 @@ config_action_defaults (
     );
 
 # Read in config files: system first, then user.
-for my $file ("/share/tidy-inbox-imap/defaults.rc",
-           "$ENV{HOME}/.tidy-inbox-imaprc",
-	   "./.tidy-inbox-imap",
+for my $file ("/usr/share/tidy-inbox-imap/defaults.rc",
+	      "$ENV{HOME}/.tidy-inbox-imaprc.imap-settings"
+	      "$ENV{HOME}/.tidy-inbox-imaprc",
+	      "./.tidy-inbox-imap",
     )
 {
     unless (my $return = do $file) {

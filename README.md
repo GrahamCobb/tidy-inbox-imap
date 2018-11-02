@@ -78,7 +78,8 @@ If it fails, the warning message is printed (using it as a printf format, with t
 Perl files for configuration are searched for and all loaded, in order, from:
 
 ```
-/share/tidy-inbox-imap/defaults.rc
+/usr/share/tidy-inbox-imap/defaults.rc
+$ENV{HOME}/.tidy-inbox-imaprc.imap-settings
 $ENV{HOME}/.tidy-inbox-imaprc
 ./.tidy-inbox-imap
 ```
