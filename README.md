@@ -37,6 +37,7 @@ Parameters:
  * `max` - (Check only) maximum number of messages expected in check - **default:** *none*
  * `warning` - (Check only) message to display if check fails - **default:** *Check failed: %d messages match search*
  * `check` - (Check only) perl subroutine reference to determine if messages pass check - **default:** *none*
+ * `verbose` - verbosity to use during this action (0 = quiet (warnings and errors only), 1 = normal, 2 = log (all actions), 3 = info, 4 = debug) - **default:** *1*
 
 ### Dedup
 

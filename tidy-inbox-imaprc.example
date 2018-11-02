@@ -21,7 +21,8 @@ config_action_check (search => 'SUBJECT "Cron <root@nas>" SUBJECT "echo hello" B
 		     comment => 'Check NAS still alive');
 # Tidy recurring mails
 config_action_dedup (search => 'SUBJECT "Cron <root@nas>" SUBJECT "echo hello" BODY "hello" NOT FLAGGED NOT DELETED',
-		     comment => 'Dedup NAS hello');
+		     comment => 'Dedup NAS hello',
+		     verbose => 2); # Log deletions
 config_action_delete (search => 'FROM "MAILER-DAEMON@example.com" SUBJECT "Postfix SMTP server: errors from" BODY "Relay access denied" NOT FLAGGED NOT DELETED',
 		      before => '2 days ago',
 		      comment => 'SMTP relay denied');

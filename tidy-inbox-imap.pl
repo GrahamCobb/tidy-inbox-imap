@@ -11,9 +11,25 @@ use Data::Dumper;
 our %config_imap = (); # IMAP settings
 our %config_action_defaults = (); # Defaults for subsequent actions
 our @config_actions = (); # Array of all actions
-our $force_dryrun = 0; # Global dry run override
+our $force_dryrun = 1; # Global dry run override
+our $overall_verbosity = 1; # 0 = quiet (warnings and errors only), 1 = normal, 2 = log (all actions), 3 = info, 4 = debug
+our $verbosity = $overall_verbosity; # May be increased during certain actions
 
 # Utility routines
+
+# Logging
+sub output_normal {
+    if ($verbosity >= 1) {print @_};
+}
+sub output_log {
+    if ($verbosity >= 2) {print @_};
+}
+sub output_info {
+    if ($verbosity >= 3) {print @_};
+}
+sub output_debug {
+    if ($verbosity >= 4) {print @_};
+}
 
 # Convert a date specification to an RFC3501 "date-text"
 sub date_to_RFC3501($) {
@@ -39,7 +55,7 @@ sub build_search($) {
 
 sub do_search($$$) {
     my ($imap, $search, $sort) = @_;
-    #print $search."\n";
+    output_debug($search."\n");
     my @ids = $imap->search($search, $sort);
     die "Search failed: ".$imap->errstr."\n" if $imap->waserr || $imap->errstr;
     return @ids
@@ -72,7 +88,7 @@ sub action_delete($$) {
 
     # If nothing found just exit
     unless (@ids) {
-	print "Nothing found in search.\n";
+	output_info("Nothing found in search.\n");
 	return;
     }
 
@@ -82,32 +98,30 @@ sub action_delete($$) {
 	return unless (@ids);
     }
 
-    #print @ids." messages found\n";
-    #print "Available server flags: " . join(", ", $imap->flags) . "\n";
+    output_debug(@ids." messages found\n");
+    output_debug("Available server flags: " . join(", ", $imap->flags) . "\n");
 
     # Forget about latest message and delete the rest
     if ($action->{keep} && $action->{keep} > 0) {
 	for ( my $i = $action->{keep} ; $i ; $i-- ) {
 	    my $latest = pop @ids;
 	    last unless $latest;
-	    print "Ignoring message $latest\n";
+	    output_info("Ignoring message $latest\n");
 	}
     }
     if ($action->{keep} && $action->{keep} < 0) {
 	for ( my $i = - $action->{keep} ; $i ; $i-- ) {
 	    my $latest = shift @ids;
 	    last unless $latest;
-	    print "Ignoring message $latest\n";
+	    output_info("Ignoring message $latest\n");
 	}
     }
 
     # Any to delete?
     if (@ids) {
 	for my $midx ( @ids ) {
-	    print "DRY RUN: " if $force_dryrun || $action->{dryrun};
-	    print "Deleting $midx";
-	    #logging...
-	    print "\n";
+	    output_log("DRY RUN: ") if $force_dryrun || $action->{dryrun};
+	    output_log("Deleting $midx\n");
 	    delete_message $imap, $midx, $action->{trash} unless $force_dryrun || $action->{dryrun};
 	}
     }
@@ -132,7 +146,7 @@ sub action_check($$) {
 	@ids = $action->{filter}($imap, @ids);
     }
 
-    #print @ids." messages found\n";
+    output_debug(@ids." messages found\n");
 
     # Do checks
     my $check_ok = 1;
@@ -144,8 +158,7 @@ sub action_check($$) {
 
     unless ($check_ok) {
 	$warning = $warning || $action->{warn};
-	printf $warning, scalar @ids;
-	print "\n";
+	output_normal(sprintf($warning, scalar @ids)."\n");
     }
 
 }
@@ -165,12 +178,12 @@ sub filter_sort_by_date($@) {
     for my $midx ( @ids ) {
 	my $message = $imap->fetch($midx) or die $imap->errstr;
 	$message = "$message"; # force stringification
-	#print Dumper \$message;
+	output_debug(Dumper \$message);
 	my $email = Email::Simple->new($message);
 	my $datehdr = $email->header("Date");
 	my $datetime = $date_parser->parse_datetime($datehdr);
 	$message_date{$midx} = $datetime;
-	print "$midx - $datehdr\n";
+	output_debug("$midx - $datehdr\n");
     }
 
     # Sort by date
@@ -304,7 +317,10 @@ if ($config_imap{username}) {
 
 # Do the actions
 for my $action (@config_actions) {
-    print $action->{comment}."\n" if $action->{comment};
+    $verbosity = $overall_verbosity; # Reset transient verbosity
+    $verbosity = $action->{verbose} if $action->{verbose} && $action->{verbose} > $verbosity;
+    
+    output_normal($action->{comment}."\n") if $action->{comment};
 
     $action->{action}($imap, $action) if $action->{action};
 }
