@@ -35,7 +35,7 @@ Parameters:
  * `filter` - perl subroutine reference to filter selected messages - **default:** *none*
  * `min` - (Check only) minimum number of messages expected in check - **default:** *none*
  * `max` - (Check only) maximum number of messages expected in check - **default:** *none*
- * `warn` - (Check only) message to display if check fails - **default:** *Check failed: %d messages match search*
+ * `warning` - (Check only) message to display if check fails - **default:** *Check failed: %d messages match search*
  * `check` - (Check only) perl subroutine reference to determine if messages pass check - **default:** *none*
 
 ### Dedup

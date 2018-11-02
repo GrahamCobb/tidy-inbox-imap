@@ -136,15 +136,15 @@ sub action_check($$) {
 
     # Do checks
     my $check_ok = 1;
-    my $warn;
+    my $warning;
 
-    ($check_ok, $warn) = $action->{check}($imap, @ids) if $action->{check};
+    ($check_ok, $warning) = $action->{check}($imap, @ids) if $action->{check};
     $check_ok = 0 if $action->{min} && @ids < $action->{min};
     $check_ok = 0 if $action->{max} && @ids > $action->{max};
 
     unless ($check_ok) {
-	$warn = $warn || $action->{warn};
-	printf $warn, scalar @ids;
+	$warning = $warning || $action->{warn};
+	printf $warning, scalar @ids;
 	print "\n";
     }
 
@@ -267,7 +267,7 @@ config_action_defaults (
     folder => 'INBOX',
     trash => 'Trash',
     order => 'DATE',
-    warn => 'Check failed: %d messages match search',
+    warning => 'Check failed: %d messages match search',
     # dryrun => 0,
     # keep => 0,
     # search => '',
