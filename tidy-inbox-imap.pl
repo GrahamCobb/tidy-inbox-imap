@@ -11,7 +11,7 @@ use Data::Dumper;
 our %config_imap = (); # IMAP settings
 our %config_action_defaults = (); # Defaults for subsequent actions
 our @config_actions = (); # Array of all actions
-our $force_dryrun = 1; # Global dry run override
+our $force_dryrun = 0; # Global dry run override
 our $overall_verbosity = 1; # 0 = quiet (warnings and errors only), 1 = normal, 2 = log (all actions), 3 = info, 4 = debug
 our $verbosity = $overall_verbosity; # May be increased during certain actions
 
