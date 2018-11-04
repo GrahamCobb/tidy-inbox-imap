@@ -128,6 +128,7 @@ sub action_delete($$) {
     
 }
 
+# action_check handles both check and list (list uses a specific 'check' function)
 sub action_check($$) {
     my ($imap, $action) = (@_);
 
@@ -161,6 +162,38 @@ sub action_check($$) {
 	output_normal(sprintf($warning, scalar @ids)."\n");
     }
 
+}
+# Default 'list items' routine. Displays some message info.
+# At 'info' verbosity level, displays all message headers
+sub list_items($@) {
+    my ($imap, @ids) = (@_);
+
+    for my $midx ( @ids ) {
+	output_normal("Message: $midx\n");
+	output_info("Size: ".$imap->list($midx)." bytes)\n");
+	if( defined( my $flags = $imap->msg_flags($midx) ) ) {
+	    output_info("Flags: $flags\n");
+	} else {warn "problem listing flags for message #$midx: ".$imap->errstr;}
+	my $message = $imap->fetch($midx) or die $imap->errstr;
+	$message = "$message"; # force stringification
+	output_debug(Dumper \$message);
+	my $email = Email::Simple->new($message);
+	output_normal("Date: ".$email->header_raw('Date')."\n");
+	output_normal("From: ".$email->header_raw('From')."\n");
+	output_normal("To: ".$email->header_raw('To')."\n");
+	output_normal("Subject: ".$email->header_raw('Subject')."\n");
+
+	# Headers
+	my @header_names = $email->header_names;
+	for my $hdr ( @header_names ) {
+	    next if $hdr eq "From" || $hdr eq "To" || $hdr eq "Subject" || $hdr eq "Date";
+	    output_info($hdr.": ".$email->header_raw($hdr)."\n");
+	}
+
+	output_info("\n");
+    }
+
+    return 1;
 }
 
 # Filters
@@ -247,10 +280,14 @@ sub config_action_expunge (@) {
 sub config_action_list (@) {
     my $action = {
 	%config_action_defaults,
-	action => \&action_list,
+	list => \&list_items,
+	action => \&action_check,
 	@_,
     };
     die "List action requires search to be specified" unless $action->{search};
+    die "List action must not include min, max or check" if $action->{min} || $action->{max} || $action->{check};
+    # action_check needs the 'list' function to actually be stored as a 'check' function
+    $action->{check} = $action->{list};
     add_config_action $action;
 }
 # Add null action

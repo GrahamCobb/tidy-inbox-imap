@@ -37,6 +37,7 @@ Parameters:
  * `max` - (Check only) maximum number of messages expected in check - **default:** *none*
  * `warning` - (Check only) message to display if check fails - **default:** *Check failed: %d messages match search*
  * `check` - (Check only) perl subroutine reference to determine if messages pass check - **default:** *none*
+ * `list` - (List only) perl subroutine reference to display message info - **default:** *\&list-items*
  * `verbose` - verbosity to use during this action (0 = quiet (warnings and errors only), 1 = normal, 2 = log (all actions), 3 = info, 4 = debug) - **default:** *1*
 
 ### Dedup
@@ -68,11 +69,24 @@ in the configuration).
 
 All the specified checks are applied:
  * `check` - the specified subroutine determines if the messages pass the checks
- * 'min' - fails if the number of messages is below the specified value
- * 'max' - fails if the number of messages is above the specified value
+ * `min` - fails if the number of messages is below the specified value
+ * `max` - fails if the number of messages is above the specified value
 
 If the check passes nothing happens.
 If it fails, the warning message is printed (using it as a printf format, with the number of messages as the value).
+
+### List
+
+The mailbox is searched for all messages matching certain critieria (search and filter).
+Matching messages have some basic information (message id, date, from, to and subject) displayed
+(more information is shown at verbosity level "info").
+
+It is possible to specify your own perl procedure to display custom information.
+This has to be a perl subroutine which accepts a (scalar) reference to the Net::IMAP::Simple
+object for the connection followed by the list of message ids (this is the same arguments as a check procedure).
+The subroutine MUST return a scalar true value (1 is recommended).
+
+Note: the subroutine `list_items` is the default listing subroutine and may be useful as an example.
 
 ## Configuration
 
@@ -93,8 +107,8 @@ config procedures:
 * config_action_delete
 * config_action_null
 * config_action_check
+* *config_action_list
 * *config_action_expunge*
-* *config_action_list*
 
 Note: the script will execute the actions in the order they are defined in the config files.
 

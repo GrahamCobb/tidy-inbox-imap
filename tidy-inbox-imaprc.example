@@ -26,7 +26,7 @@ config_action_dedup (search => 'SUBJECT "Cron <root@nas>" SUBJECT "echo hello" B
 config_action_delete (search => 'FROM "MAILER-DAEMON@example.com" SUBJECT "Postfix SMTP server: errors from" BODY "Relay access denied" NOT FLAGGED NOT DELETED',
 		      before => '2 days ago',
 		      comment => 'SMTP relay denied');
-#config_action_list (search => 'SUBJECT "Cron <root@nas> echo hello" NOT DELETED');
+config_action_list (search => 'SUBJECT "Cron <root@nas> echo hello" NOT DELETED');
 #config_action_expunge (dryrun => 1); # Disabled
 
 #print Dumper \@config_actions;
