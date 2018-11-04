@@ -12,6 +12,7 @@ our %config_imap = (); # IMAP settings
 our %config_action_defaults = (); # Defaults for subsequent actions
 our @config_actions = (); # Array of all actions
 our $force_dryrun = 0; # Global dry run override
+our $dryrun = $force_dryrun; # May be enabled during certain actions
 our $overall_verbosity = 1; # 0 = quiet (warnings and errors only), 1 = normal, 2 = log (all actions), 3 = info, 4 = debug
 our $verbosity = $overall_verbosity; # May be increased during certain actions
 
@@ -120,9 +121,9 @@ sub action_delete($$) {
     # Any to delete?
     if (@ids) {
 	for my $midx ( @ids ) {
-	    output_log("DRY RUN: ") if $force_dryrun || $action->{dryrun};
+	    output_log("DRY RUN: ") if $dryrun;
 	    output_log("Deleting $midx\n");
-	    delete_message $imap, $midx, $action->{trash} unless $force_dryrun || $action->{dryrun};
+	    delete_message $imap, $midx, $action->{trash} unless $dryrun;
 	}
     }
     
@@ -356,6 +357,7 @@ if ($config_imap{username}) {
 for my $action (@config_actions) {
     $verbosity = $overall_verbosity; # Reset transient verbosity
     $verbosity = $action->{verbose} if $action->{verbose} && $action->{verbose} > $verbosity;
+    $dryrun = $action->{dryrun} || $force_dryrun;
     
     output_normal($action->{comment}."\n") if $action->{comment};
 

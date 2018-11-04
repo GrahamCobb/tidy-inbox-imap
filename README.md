@@ -86,6 +86,10 @@ This has to be a perl subroutine which accepts a (scalar) reference to the Net::
 object for the connection followed by the list of message ids (this is the same arguments as a check procedure).
 The subroutine MUST return a scalar true value (1 is recommended).
 
+There is nothing to stop the list procedure from modifying the message, and this may be desired.
+However, the list action will always call the list procedure even if `dryrun` is specified.
+If the list procedure intends to make changes it should check the $dryrun variable.
+
 Note: the subroutine `list_items` is the default listing subroutine and may be useful as an example.
 
 ## Configuration
