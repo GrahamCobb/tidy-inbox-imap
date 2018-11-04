@@ -37,7 +37,7 @@ Parameters:
  * `max` - (Check only) maximum number of messages expected in check - **default:** *none*
  * `warning` - (Check only) message to display if check fails - **default:** *Check failed: %d messages match search*
  * `check` - (Check only) perl subroutine reference to determine if messages pass check - **default:** *none*
- * `list` - (List only) perl subroutine reference to display message info - **default:** *\&list-items*
+ * `list` - (List only) perl subroutine reference to display message info - **default:** `\&list-items`
  * `verbose` - verbosity to use during this action (0 = quiet (warnings and errors only), 1 = normal, 2 = log (all actions), 3 = info, 4 = debug) - **default:** *1*
 
 ### Dedup
@@ -88,9 +88,10 @@ The subroutine MUST return a scalar true value (1 is recommended).
 
 There is nothing to stop the list procedure from modifying the message, and this may be desired.
 However, the list action will always call the list procedure even if `dryrun` is specified.
-If the list procedure intends to make changes it should check the $dryrun variable.
+If the list procedure intends to make changes it should check the `$dryrun` variable itself.
 
-Note: the subroutine `list_items` is the default listing subroutine and may be useful as an example.
+Note: the subroutine `list_items` in the main script source is the default listing subroutine
+and may be useful as an example.
 
 ## Configuration
 
@@ -111,7 +112,7 @@ config procedures:
 * config_action_delete
 * config_action_null
 * config_action_check
-* *config_action_list
+* config_action_list
 * *config_action_expunge*
 
 Note: the script will execute the actions in the order they are defined in the config files.
@@ -187,7 +188,4 @@ but the code may be a useful example.
 
  * Expunge
  * Command line configuration
- * List action
- * Logging
  * Other actions
- 
