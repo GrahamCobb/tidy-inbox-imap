@@ -172,9 +172,8 @@ sub list_items($@) {
     for my $midx ( @ids ) {
 	output_normal("Message: $midx\n");
 	output_info("Size: ".$imap->list($midx)." bytes)\n");
-	if( defined( my $flags = $imap->msg_flags($midx) ) ) {
-	    output_info("Flags: $flags\n");
-	} else {warn "problem listing flags for message #$midx: ".$imap->errstr;}
+	my $flags = $imap->msg_flags($midx) or die $imap->errstr;
+	output_info("Flags: $flags\n");
 	my $message = $imap->fetch($midx) or die $imap->errstr;
 	$message = "$message"; # force stringification
 	output_debug(Dumper \$message);
