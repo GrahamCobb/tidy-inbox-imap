@@ -159,7 +159,7 @@ sub action_check($$) {
     $check_ok = 0 if $action->{max} && @ids > $action->{max};
 
     unless ($check_ok) {
-	$warning = $warning || $action->{warn};
+	$warning = $warning || $action->{warning};
 	output_normal(sprintf($warning, scalar @ids)."\n");
     }
 
