@@ -145,7 +145,7 @@ sub action_check($$) {
     my @ids = do_search($imap, $search, $action->{order});
 
     if ($action->{filter} && @ids) {
-	@ids = $action->{filter}($imap, @ids);
+	@ids = $action->{filter}($imap, $action->{param}, @ids);
     }
 
     output_debug(@ids." messages found\n");
@@ -154,7 +154,7 @@ sub action_check($$) {
     my $check_ok = 1;
     my $warning;
 
-    ($check_ok, $warning) = $action->{check}($imap, @ids) if $action->{check};
+    ($check_ok, $warning) = $action->{check}($imap, $action->{param}, @ids) if $action->{check};
     $check_ok = 0 if $action->{min} && @ids < $action->{min};
     $check_ok = 0 if $action->{max} && @ids > $action->{max};
 
@@ -166,8 +166,8 @@ sub action_check($$) {
 }
 # Default 'list items' routine. Displays some message info.
 # At 'info' verbosity level, displays all message headers
-sub list_items($@) {
-    my ($imap, @ids) = (@_);
+sub list_items($$@) {
+    my ($imap, $param, @ids) = (@_);
 
     for my $midx ( @ids ) {
 	output_normal("Message: $midx\n");
@@ -199,8 +199,8 @@ sub list_items($@) {
 # Filters
 
 # Sample filter, although sorting by date is built-in to the search and is the default
-sub filter_sort_by_date($@) {
-    my ($imap, @ids) = (@_);
+sub filter_sort_by_date($$@) {
+    my ($imap, $param, @ids) = (@_);
     
     # RFC2822 date parser
     my $date_parser = DateTime::Format::Mail->new( loose => 1 );
@@ -250,6 +250,7 @@ sub config_action_dedup (@) {
 	action => \&action_delete,
 	@_,
     };
+    if ($action->{param}) {die "Param can only be specified if filter, check or action are specified" unless $action->{filter} || $action->{check} || $action->{list};}
     die "Dedup action requires search to be specified" unless $action->{search};
     warn "Dedup actions with keep=>0 should be written as delete actions" if $action->{keep} == 0;
     add_config_action $action;
@@ -262,6 +263,7 @@ sub config_action_delete (@) {
 	action => \&action_delete,
 	@_,
     };
+    if ($action->{param}) {die "Param can only be specified if filter, check or action are specified" unless $action->{filter} || $action->{check} || $action->{list};}
     die "Delete action requires search to be specified" unless $action->{search};
     warn "Delete actions with keep should be written as dedup actions" if $action->{keep};
     add_config_action $action;
@@ -273,6 +275,7 @@ sub config_action_expunge (@) {
 	action => \&action_expunge,
 	@_,
     };
+    if ($action->{param}) {die "Param can only be specified if filter, check or action are specified" unless $action->{filter} || $action->{check} || $action->{list};}
     die "Expunge action requires folder to be specified" unless $action->{folder};
     add_config_action $action;
 }
@@ -286,6 +289,7 @@ sub config_action_list (@) {
     };
     die "List action requires search to be specified" unless $action->{search};
     die "List action must not include min, max or check" if $action->{min} || $action->{max} || $action->{check};
+    if ($action->{param}) {die "Param can only be specified if filter, check or action are specified" unless $action->{filter} || $action->{check} || $action->{list};}
     # action_check needs the 'list' function to actually be stored as a 'check' function
     $action->{check} = $action->{list};
     add_config_action $action;
@@ -297,6 +301,7 @@ sub config_action_null (@) {
 	action => undef,
 	@_,
     };
+    if ($action->{param}) {die "Param can only be specified if filter, check or action are specified" unless $action->{filter} || $action->{check} || $action->{list};}
     add_config_action $action;
 }
 # Add check action
@@ -308,6 +313,7 @@ sub config_action_check (@) {
     };
     die "Check action requires min or max to be specified" unless $action->{min} || $action->{max};
     die "Check action requires search to be specified" unless $action->{search};
+    if ($action->{param}) {die "Param can only be specified if filter, check or action are specified" unless $action->{filter} || $action->{check} || $action->{list};}
     add_config_action $action;
 }
 
@@ -327,6 +333,7 @@ config_action_defaults (
     # before => undef,
     # min => undef,
     # max => undef,
+    # param => undef,
     );
 
 # Read in config files: system first, then user.

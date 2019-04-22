@@ -38,6 +38,7 @@ Parameters:
  * `warning` - (Check only) message to display if check fails - **default:** *Check failed: %d messages match search*
  * `check` - (Check only) perl subroutine reference to determine if messages pass check - **default:** *none*
  * `list` - (List only) perl subroutine reference to display message info - **default:** `\&list-items`
+ * `param` - (filter, Check and List only) perl scalar value to pass to 'filter', 'check' or `list` subroutine - **default:** *undef*
  * `verbose` - verbosity to use during this action (0 = quiet (warnings and errors only), 1 = normal, 2 = log (all actions), 3 = info, 4 = debug) - **default:** *1*
 
 ### Dedup
@@ -61,7 +62,8 @@ The mailbox is searched for all messages matching certain critieria (search and 
 
 A check procedure can be specified to allow perl code to determine if the check passes.
 This has to be a perl subroutine which accepts a (scalar) reference to the Net::IMAP::Simple
-object for the connection followed by the list of message ids (this is the same arguments as a filter procedure).
+object for the connection followed by a user-provided perl scalar (which may be undef)
+followed by the list of message ids (this is the same arguments as a filter procedure).
 It must return a true/false value to indicate whether the test passes.
 This can be a scalar or the first element of a list.
 If a list, the second element must be the desired warning message (this will replace the message specified
@@ -83,7 +85,8 @@ Matching messages have some basic information (message id, date, from, to and su
 
 It is possible to specify your own perl procedure to display custom information.
 This has to be a perl subroutine which accepts a (scalar) reference to the Net::IMAP::Simple
-object for the connection followed by the list of message ids (this is the same arguments as a check procedure).
+object for the connection followed by a user-provided perl scalar (which may be undef)
+followed by the list of message ids (this is the same arguments as a check procedure).
 The subroutine MUST return a scalar true value (1 is recommended).
 
 There is nothing to stop the list procedure from modifying the message, and this may be desired.
@@ -177,7 +180,8 @@ and added to **the front of the search string**. If the value needs to be insert
 
 A filter procedure can be specified to remove message ids from processing during the action.
 It has to be a perl subroutine which accepts a (scalar) reference to the Net::IMAP::Simple
-object for the connection followed by the list of message ids.
+object for the connection followed by a user-specified scalar value (which may be undef)
+followed by the list of message ids.
 It must return the list of message ids to be processed, even if it is unchanged.
 
 An example filter procedure is `filter_sort_by_date` in the main script source.
