@@ -196,6 +196,30 @@ sub list_items($$@) {
     return 1;
 }
 
+sub add_flag($$@) {
+    my ($imap, $new_flag, @ids) = (@_);
+
+    for my $midx ( @ids ) {
+	output_info("Message: $midx\n");
+	output_debug("Size: ".$imap->list($midx)." bytes\n");
+	my $flags = $imap->msg_flags($midx);
+	if ($flags) {output_info("Current flags: ".$flags."\n");} else {output_info("Current flags: ".$imap->errstr."\n");};
+
+	output_log("DRY RUN: ") if $dryrun;
+	output_log("Message $midx add flag $new_flag\n");
+	unless ($dryrun) {$imap->add_flags( $midx, $new_flag ) or die $imap->errstr;}
+	
+	$flags = $imap->msg_flags($midx);
+	if ($flags) {output_info("New flags: ".$flags."\n");} else {output_info("New flags: ".$imap->errstr."\n");};
+	    
+	my $message = $imap->fetch($midx) or die $imap->errstr;
+	$message = "$message"; # force stringification
+	output_debug(Dumper \$message);
+    }
+
+    return 1;
+}
+
 # Filters
 
 # Sample filter, although sorting by date is built-in to the search and is the default
@@ -292,6 +316,21 @@ sub config_action_list (@) {
     if ($action->{param}) {die "Param can only be specified if filter, check or action are specified" unless $action->{filter} || $action->{check} || $action->{list};}
     # action_check needs the 'list' function to actually be stored as a 'check' function
     $action->{check} = $action->{list};
+    add_config_action $action;
+}
+# Add add flag action
+sub config_action_flag (@) {
+    my $action = {
+	%config_action_defaults,
+	check => \&add_flag,
+	action => \&action_check,
+	@_,
+    };
+    die "Flag action requires search to be specified" unless $action->{search};
+    die "Flag action must not include min or max" if $action->{min} || $action->{max};
+    die "Flag action must not include param or list (use List action if these are needed)" if $action->{param} || $action->{list};
+    # add_flag needs the 'flag' to actually be stored as the 'param'
+    $action->{param} = $action->{flag};
     add_config_action $action;
 }
 # Add null action

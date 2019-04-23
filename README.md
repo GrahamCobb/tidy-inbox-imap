@@ -39,6 +39,7 @@ Parameters:
  * `check` - (Check only) perl subroutine reference to determine if messages pass check - **default:** *none*
  * `list` - (List only) perl subroutine reference to display message info - **default:** `\&list-items`
  * `param` - (filter, Check and List only) perl scalar value to pass to 'filter', 'check' or `list` subroutine - **default:** *undef*
+ * `flag` - (Flag only) name of flag to add - **default:** *undef*
  * `verbose` - verbosity to use during this action (0 = quiet (warnings and errors only), 1 = normal, 2 = log (all actions), 3 = info, 4 = debug) - **default:** *1*
 
 ### Dedup
@@ -96,6 +97,14 @@ If the list procedure intends to make changes it should check the `$dryrun` vari
 Note: the subroutine `list_items` in the main script source is the default listing subroutine
 and may be useful as an example.
 
+### Flag
+
+The mailbox is searched for all messages matching certain critieria (search and filter).
+
+The specified `flag` is added to the matched messages.
+
+Note: the flag should normally be specified as a quoted word (for example `flag => qw(my_flag)`).
+
 ## Configuration
 
 Perl files for configuration are searched for and all loaded, in order, from:
@@ -116,6 +125,7 @@ config procedures:
 * config_action_null
 * config_action_check
 * config_action_list
+* config_action_flag
 * *config_action_expunge*
 
 Note: the script will execute the actions in the order they are defined in the config files.
