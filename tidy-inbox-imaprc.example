@@ -11,6 +11,7 @@ config_action_defaults (
     trash => 'Tidied', # Separate tidied messages from trash
     dryrun => 0, # Change to 1 to disable all actions
     keep => 2, # Change default for dedup
+    verbose => $verbosity_log, # Log actions
     );
 
 # Check that expected recurring messages have been seen
@@ -22,12 +23,16 @@ config_action_check (search => 'SUBJECT "Cron <root@nas>" SUBJECT "echo hello" B
 # Tidy recurring mails
 config_action_dedup (search => 'SUBJECT "Cron <root@nas>" SUBJECT "echo hello" BODY "hello" NOT FLAGGED NOT DELETED',
 		     comment => 'Dedup NAS hello',
-		     verbose => 2); # Log deletions
+		     verbose => $verbosity_log); # Log deletions
 config_action_delete (search => 'FROM "MAILER-DAEMON@example.com" SUBJECT "Postfix SMTP server: errors from" BODY "Relay access denied" NOT FLAGGED NOT DELETED',
 		      before => '2 days ago',
 		      comment => 'SMTP relay denied');
 config_action_list (search => 'SUBJECT "Cron <root@nas> echo hello" NOT DELETED');
+config_action_flag (search => 'NOT HEADER "X-Grc-Sieve-Message" "Passed" NOT KEYWORD "sieve_problem" NOT FLAGGED NOT DELETED',
+		    flag => qw(sieve_problem),
+		    comment => 'Checking sieve running');
 #config_action_expunge (dryrun => 1); # Disabled
+config_action_null (comment => 'That\'s all folks!');
 
 #print Dumper \@config_actions;
 
