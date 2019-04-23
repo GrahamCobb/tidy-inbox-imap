@@ -13,23 +13,29 @@ our %config_action_defaults = (); # Defaults for subsequent actions
 our @config_actions = (); # Array of all actions
 our $force_dryrun = 0; # Global dry run override
 our $dryrun = $force_dryrun; # May be enabled during certain actions
-our $overall_verbosity = 1; # 0 = quiet (warnings and errors only), 1 = normal, 2 = log (all actions), 3 = info, 4 = debug
+# Verbosity definitions
+our $verbosity_quiet = 0; # warnings and errors only
+our $verbosity_normal = 1;
+our $verbosity_log = 2; # Log all actions
+our $verbosity_info = 3;
+our $verbosity_debug = 4;
+our $overall_verbosity = $verbosity_normal; # Do not log actions by default
 our $verbosity = $overall_verbosity; # May be increased during certain actions
 
 # Utility routines
 
 # Logging
 sub output_normal {
-    if ($verbosity >= 1) {print @_};
+    if ($verbosity >= $verbosity_normal) {print @_};
 }
 sub output_log {
-    if ($verbosity >= 2) {print @_};
+    if ($verbosity >= $verbosity_log) {print @_};
 }
 sub output_info {
-    if ($verbosity >= 3) {print @_};
+    if ($verbosity >= $verbosity_info) {print @_};
 }
 sub output_debug {
-    if ($verbosity >= 4) {print @_};
+    if ($verbosity >= $verbosity_debug) {print @_};
 }
 
 # Convert a date specification to an RFC3501 "date-text"
@@ -208,10 +214,10 @@ sub add_flag($$@) {
 	output_log("DRY RUN: ") if $dryrun;
 	output_log("Message $midx add flag $new_flag\n");
 	unless ($dryrun) {$imap->add_flags( $midx, $new_flag ) or die $imap->errstr;}
-	
+
 	$flags = $imap->msg_flags($midx);
 	if ($flags) {output_info("New flags: ".$flags."\n");} else {output_info("New flags: ".$imap->errstr."\n");};
-	    
+
 	my $message = $imap->fetch($midx) or die $imap->errstr;
 	$message = "$message"; # force stringification
 	output_debug(Dumper \$message);
