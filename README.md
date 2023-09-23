@@ -40,7 +40,7 @@ Parameters:
  * `list` - (List only) perl subroutine reference to display message info - **default:** `\&list-items`
  * `param` - (filter, Check and List only) perl scalar value to pass to 'filter', 'check' or `list` subroutine - **default:** *undef*
  * `flag` - (Flag only) name of flag to add - **default:** *undef*
- * `verbose` - verbosity to use during this action (`$verbosity_quiet` (warnings and errors only), `$verbosity_normal`, `$verbosity_log` (all actions), `$verbosity_info`, `$verbosity_debug`) - **default:** *1*
+ * `verbose` - verbosity to use during this action (`$verbosity_quiet` (warnings and errors only), `$verbosity_normal`, `$verbosity_log` (all actions), `$verbosity_info`, `$verbosity_debug`) - **default:** *$verbosity_normal*
 
 ### Dedup
 
