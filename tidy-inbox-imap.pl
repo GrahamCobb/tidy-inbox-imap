@@ -135,7 +135,7 @@ sub action_delete($$) {
     
 }
 
-# action_check handles both check and list (list uses a specific 'check' function)
+# action_check handles check, list and flag (list and flag use specific 'check' functions)
 sub action_check($$) {
     my ($imap, $action) = (@_);
 
@@ -202,6 +202,7 @@ sub list_items($$@) {
     return 1;
 }
 
+# "Check" function to handle flag action
 sub add_flag($$@) {
     my ($imap, $new_flag, @ids) = (@_);
 
