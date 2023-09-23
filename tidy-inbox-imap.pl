@@ -62,9 +62,9 @@ sub build_search($) {
 
 sub do_search($$$) {
     my ($imap, $search, $sort) = @_;
-    output_debug($search."\n");
+    output_debug("search=".$search."\n");
     my @ids = $imap->search($search, $sort);
-    die "Search failed: ".$imap->errstr."\n" if $imap->waserr || $imap->errstr;
+    die "Search ".$search." failed: ".$imap->errstr."\n" if $imap->waserr || $imap->errstr;
     return @ids
 }
 
@@ -380,6 +380,8 @@ config_action_defaults (
     # max => undef,
     # param => undef,
     );
+# Allows turning on Net::IMAP::Simple debug logging in config files
+my $imap_debug = 0;
 
 # Read in config files: system first, then user.
 for my $file ("/usr/share/tidy-inbox-imap/defaults.rc",
@@ -396,7 +398,9 @@ for my $file ("/usr/share/tidy-inbox-imap/defaults.rc",
 }
  
 # IMAP connect
-my $imap = Net::IMAP::Simple->new($config_imap{server}) ||
+my $imap = Net::IMAP::Simple->new($config_imap{server},
+				  find_ssl_defaults => 1,
+				  debug => $imap_debug) ||
    die "Unable to connect to IMAP: ".$Net::IMAP::Simple::errstr."\n";
  
 # Log on
