@@ -1,11 +1,23 @@
 # Configuration of IMAP server settings is mandatory.
 # If you prefer to keep your IMAP settings separate from this file you can use .tidy-inbox-imaprc.imap-settings
 # Or, of course, include perl code to handle some sort of encrypted storage
+
+# If you have a local user account on the mail server system itself,
+# then it is easiest to use a local dovecot-imap process and not worry about
+# usernames and passwords. This is referred to in the Net::IMAP::Simple
+# documentation as "Preauth".
 config_imap (
-    server => "imap.example.com",
-    username => "me-me-me",
-    password => "Pa55WoRd",
+    server => "cmd:/usr/lib/dovecot/imap"
     );
+# Note: if you can SSH into the server, this can also use a remote command such as:
+# server => "cmd:ssh -C mailhost /usr/lib/dovecot/imap"
+
+# If you do not have a local user account on the server:
+#config_imap (
+#    server => "imap.example.com",
+#    username => "me-me-me",
+#    password => "Pa55WoRd",
+#    );
 
 config_action_defaults (
     trash => 'Tidied', # Separate tidied messages from trash
