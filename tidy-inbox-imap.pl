@@ -1,18 +1,47 @@
 #!/usr/bin/perl
 use strict;
 use warnings;
-use Net::IMAP::Simple;
+use Getopt::Long;
 use Email::Simple;
 use Time::ParseDate;
 use DateTime::Format::Mail;
 use Data::Dumper;
+
+# Using my debugging version of Net::IMAP::Simple cannot be chosen at run time
+# So, to use it comment out the 'use Net::IMAP::Simple' and uncomment the require.
+use Net::IMAP::Simple;
+#require "/home/cobb/Linux/tidy-inbox-imap/Net-IMAP-Simple.pm"; #For debugging Net::IMAP::Simple
+
+#
+# Health warning when using Net::IMAP::Simple...
+#
+# It is a GREAT package for *simple* IMAP operations but it has a big weakness
+# in error handling, particularly in the use I make of it here - where you may
+# want to do something even after an error has occurred.
+#
+# For some operations, errors are indicated by returning an empty value,
+# for others an undef, for others the setting of $imap->errstr and for others
+# the setting of $imap->waserr. It is important to check the right condition
+# FOR THE PARTICULAR OPERATION!
+#
+# In particular, do NOT check waserr except after calls reading flags (msg_flags,
+# add_flags, seen, deleted). However, after those calls, DO check waserr
+# as imap->errstr may be set even when actually successful!
+#
+# It is not clear to me that continuing after an error is safe for two reasons:
+# (i) It might be that waserr and/or errstr may be set and not cleared by the new call
+# (ii) There may be cases where the sub returns without waiting for all
+# responses to be received and the dialog with the IMAP server gets out of sync.
+# If this turns out to be an issue I will look into killing and restarting
+# the connection to the IMAP server after any error.
+#
 
 # Global variables
 our %config_imap = (); # IMAP settings
 our %config_action_defaults = (); # Defaults for subsequent actions
 our @config_actions = (); # Array of all actions
 our $force_dryrun = 0; # Global dry run override
-our $dryrun = $force_dryrun; # May be enabled during certain actions
+
 # Verbosity definitions
 our $verbosity_quiet = 0; # warnings and errors only
 our $verbosity_normal = 1;
@@ -20,7 +49,22 @@ our $verbosity_log = 2; # Log all actions
 our $verbosity_info = 3;
 our $verbosity_debug = 4;
 our $overall_verbosity = $verbosity_normal; # Do not log actions by default
+
+# Command line overrides
+# Note: no Pod::Usage documentation because command line options are only used for
+# my testing/debugging.
+#  --dry - force dry run
+#  --verbose increments (or sets) minimum verbosity
+#   --verbose=4 - set minimum verbosity to debug
+#  --config=<file> - replace (all) default config files with just one specified file
+my $override_config;
+GetOptions ('dry' => \$force_dryrun,
+	    'verbose:+' => \$overall_verbosity,
+	    'config=s' => \$override_config,
+    );
+our $dryrun = $force_dryrun; # May be enabled during certain actions
 our $verbosity = $overall_verbosity; # May be increased during certain actions
+
 
 # Utility routines
 
@@ -62,9 +106,10 @@ sub build_search($) {
 
 sub do_search($$$) {
     my ($imap, $search, $sort) = @_;
-    output_debug("search=".$search."\n");
+    output_debug("do_search2=".$search."\n");
+    # Note: search doesn't usefully report errors, so we can't normally distinguish no results from an error
     my @ids = $imap->search($search, $sort);
-    die "Search ".$search." failed: ".$imap->errstr."\n" if $imap->waserr || $imap->errstr;
+    die "Search ".$search." failed: ", ($imap->errstr || '') if $imap->waserr;
     return @ids
 }
 
@@ -72,8 +117,8 @@ sub delete_message($$$) {
     my ($imap, $msgnum, $trash) = @_;
     $imap->copy( $msgnum, $trash )
 	or ( ($imap->errstr =~ /\[TRYCREATE\]/i) and $imap->create_mailbox($trash) and $imap->copy( $msgnum, $trash ) )
-	or die "Copy failed: ".$imap->errstr."\n";
-    $imap->delete( $msgnum ) or die "Delete failed: ".$imap->errstr."\n";
+	or die "Copy failed: ", ($imap->errstr || '');
+    $imap->delete( $msgnum ) or die "Delete failed: ", ($imap->errstr || '');
 }
 
 # Actions
@@ -84,8 +129,8 @@ sub action_delete($$) {
     
     # Select INBOX
     unless (my $msgs = $imap->select($action->{inbox})) {
-	die "Folder $action->{inbox} not found: ".$imap->errstr."\n" unless defined $msgs;
-	warn "Folder $action->{inbox} is empty.\n";
+	die "Folder $action->{inbox} not found: " unless defined $msgs;
+	warn "Folder $action->{inbox} is empty.\n", ($imap->errstr || '');
 	return;
     }
 
@@ -141,7 +186,7 @@ sub action_check($$) {
 
     # Select INBOX
     unless (my $msgs = $imap->select($action->{inbox})) {
-	die "Folder $action->{inbox} not found: ".$imap->errstr."\n" unless defined $msgs;
+	die "Folder $action->{inbox} not found: ", ($imap->errstr || '') unless defined $msgs;
 	warn "Folder $action->{inbox} is empty.\n";
 	return;
     }
@@ -180,7 +225,7 @@ sub list_items($$@) {
 	output_info("Size: ".$imap->list($midx)." bytes)\n");
 	my $flags = $imap->msg_flags($midx);
 	if ($flags) {output_info("Flags: ".$flags."\n");} else {output_info("Flags: ".$imap->errstr."\n");};
-	my $message = $imap->fetch($midx) or die $imap->errstr;
+	my $message = $imap->fetch($midx) or die 'IMAP fetch failed: ', ($imap->errstr || '');
 	$message = "$message"; # force stringification
 	output_debug(Dumper \$message);
 	my $email = Email::Simple->new($message);
@@ -209,15 +254,21 @@ sub add_flag($$@) {
     for my $midx ( @ids ) {
 	output_info("Message: $midx\n");
 	output_debug("Size: ".$imap->list($midx)." bytes\n");
+	# NOTE: Unfortunately (and arguably a bug), the Net::IMAP::Simple flags routines set errstr unconditionally
+	# and so it is necessary to test 'waserr' instead. Note no other routines use waserr.
 	my $flags = $imap->msg_flags($midx);
-	if ($flags) {output_info("Current flags: ".$flags."\n");} else {output_info("Current flags: ".$imap->errstr."\n");};
+	die "Current flags ".$midx." failed: ".$imap->errstr."\n" if $imap->waserr;
+	output_info("Current flags: ".$flags."\n");
 
 	output_log("DRY RUN: ") if $dryrun;
 	output_log("Message $midx add flag $new_flag\n");
-	unless ($dryrun) {$imap->add_flags( $midx, $new_flag ) or die $imap->errstr;}
+	unless ($dryrun) {
+	    $imap->add_flags( $midx, $new_flag );
+	    die "add_flags ".$midx." failed: ".$imap->errstr."\n" if $imap->waserr;
+	}
 
 	$flags = $imap->msg_flags($midx);
-	if ($flags) {output_info("New flags: ".$flags."\n");} else {output_info("New flags: ".$imap->errstr."\n");};
+	if ($flags) {output_info("New flags: ".$flags."\n");} else {output_info("New flags error: ".$imap->errstr."\n");};
 
 	my $message = $imap->fetch($midx) or die $imap->errstr;
 	$message = "$message"; # force stringification
@@ -385,16 +436,24 @@ config_action_defaults (
 my $imap_debug = 0;
 
 # Read in config files: system first, then user.
-for my $file ("/usr/share/tidy-inbox-imap/defaults.rc",
-	      "$ENV{HOME}/.tidy-inbox-imaprc.imap-settings",
-	      "$ENV{HOME}/.tidy-inbox-imaprc",
-	      "./.tidy-inbox-imap",
-    )
+# Unless overriden by --config
+my @configfiles = (defined $override_config) ? $override_config :
+    ("/usr/share/tidy-inbox-imap/defaults.rc",
+     "$ENV{HOME}/.tidy-inbox-imaprc.imap-settings",
+     "$ENV{HOME}/.tidy-inbox-imaprc",
+     "./.tidy-inbox-imap" );
+for my $file (@configfiles)
 {
     unless (my $return = do $file) {
-	warn "couldn't parse $file: $@" if $@;
-	#warn "couldn't do $file: $!"    unless defined $return;
-	#warn "couldn't run $file"       unless $return;
+	# Note: file errors are fatal if --config has been specified
+	if (defined $override_config) {
+	    die "couldn't parse $file: $@" if $@;
+	    die "couldn't do $file: $!" unless defined $return;
+	} else {
+	    warn "couldn't parse $file: $@" if $@;
+	    # warn "couldn't do $file: $!" unless defined $return;
+	}
+	# warn "couldn't run $file" unless $return;
     }
 }
  
